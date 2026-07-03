@@ -1,0 +1,19 @@
+{
+  "name": "BaruCollect",
+  "short_name": "BaruCollect",
+  "description": "Scan, estimate and share your manga collection",
+  "start_url": "/fr/dashboard",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#ea580c",
+  "orientation": "portrait-primary",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

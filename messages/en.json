@@ -1,0 +1,78 @@
+{
+  "common": {
+    "appName": "BaruCollect",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "search": "Search",
+    "error": "Something went wrong"
+  },
+  "nav": {
+    "dashboard": "Collection",
+    "scanner": "Scanner",
+    "settings": "Settings",
+    "login": "Log in",
+    "signup": "Sign up",
+    "logout": "Log out"
+  },
+  "home": {
+    "title": "Manage your manga collection",
+    "subtitle": "Scan, estimate, and share your manga and light novels.",
+    "cta": "Get started",
+    "ctaLogin": "Log in"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "loginTitle": "Log in",
+    "signupTitle": "Create an account",
+    "loginButton": "Log in",
+    "signupButton": "Sign up",
+    "googleButton": "Continue with Google",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "username": "Username"
+  },
+  "dashboard": {
+    "title": "My collection",
+    "totalValue": "Estimated value",
+    "volumes": "{count} volumes",
+    "seriesProgress": "{owned}/{total} volumes",
+    "empty": "Your collection is empty. Scan your first manga!",
+    "scanCta": "Scan an ISBN"
+  },
+  "scanner": {
+    "title": "Scan ISBN",
+    "hint": "Align the barcode within the frame",
+    "manual": "Manual entry",
+    "isbnPlaceholder": "978…",
+    "add": "Add to my collection",
+    "cameraError": "Unable to access the camera",
+    "notFound": "ISBN not found in catalogs"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "displayName": "Display name",
+    "bio": "Bio",
+    "publicProfile": "Public profile",
+    "publicHint": "Others can view your collection at /user/{username}",
+    "saved": "Profile updated"
+  },
+  "publicProfile": {
+    "collection": "{name}'s collection",
+    "private": "This profile is private or not found",
+    "totalValue": "Estimated value"
+  },
+  "conditions": {
+    "mint": "Mint",
+    "near_mint": "Near mint",
+    "very_good": "Very good",
+    "good": "Good",
+    "acceptable": "Acceptable",
+    "poor": "Poor"
+  }
+}

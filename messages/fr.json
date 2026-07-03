@@ -1,0 +1,78 @@
+{
+  "common": {
+    "appName": "BaruCollect",
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "back": "Retour",
+    "search": "Rechercher",
+    "error": "Une erreur est survenue"
+  },
+  "nav": {
+    "dashboard": "Collection",
+    "scanner": "Scanner",
+    "settings": "Paramètres",
+    "login": "Connexion",
+    "signup": "Inscription",
+    "logout": "Déconnexion"
+  },
+  "home": {
+    "title": "Gérez votre collection de mangas",
+    "subtitle": "Scannez, estimez et partagez vos mangas et light novels.",
+    "cta": "Commencer",
+    "ctaLogin": "Se connecter"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Mot de passe",
+    "loginTitle": "Connexion",
+    "signupTitle": "Créer un compte",
+    "loginButton": "Se connecter",
+    "signupButton": "S'inscrire",
+    "googleButton": "Continuer avec Google",
+    "noAccount": "Pas encore de compte ?",
+    "hasAccount": "Déjà un compte ?",
+    "username": "Nom d'utilisateur"
+  },
+  "dashboard": {
+    "title": "Ma collection",
+    "totalValue": "Valeur estimée",
+    "volumes": "{count} tomes",
+    "seriesProgress": "{owned}/{total} tomes",
+    "empty": "Votre collection est vide. Scannez votre premier manga !",
+    "scanCta": "Scanner un ISBN"
+  },
+  "scanner": {
+    "title": "Scanner ISBN",
+    "hint": "Placez le code-barres dans le cadre",
+    "manual": "Saisie manuelle",
+    "isbnPlaceholder": "978…",
+    "add": "Ajouter à ma collection",
+    "cameraError": "Impossible d'accéder à la caméra",
+    "notFound": "ISBN introuvable dans les catalogues"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profile": "Profil",
+    "displayName": "Nom affiché",
+    "bio": "Bio",
+    "publicProfile": "Profil public",
+    "publicHint": "Les autres pourront voir votre collection sur /user/{username}",
+    "saved": "Profil mis à jour"
+  },
+  "publicProfile": {
+    "collection": "Collection de {name}",
+    "private": "Ce profil est privé ou introuvable",
+    "totalValue": "Valeur estimée"
+  },
+  "conditions": {
+    "mint": "Neuf",
+    "near_mint": "Quasi neuf",
+    "very_good": "Très bon",
+    "good": "Bon",
+    "acceptable": "Acceptable",
+    "poor": "Mauvais"
+  }
+}
