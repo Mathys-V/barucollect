@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserMultiFormatReader, BarcodeFormat } from "@zxing/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addBookToCollection } from "@/app/actions/collection";
 import { normalizeIsbn } from "@/lib/utils";
+import { DecodeHintType } from "@zxing/library";
 
 export function IsbnScanner() {
   const t = useTranslations("scanner");
@@ -37,15 +38,28 @@ export function IsbnScanner() {
     setError(null);
 
     try {
-      const reader = new BrowserMultiFormatReader();
-      const video = document.getElementById("scanner-video") as HTMLVideoElement;
-      const controls = await reader.decodeFromVideoDevice(undefined, video, (result) => {
-        if (result) {
-          controls.stop();
-          setScanning(false);
-          void handleAdd(result.getText());
-        }
-      });
+      // On crée des 'hints' pour forcer la lecture de EAN_13 et EAN_8
+      const hints = new Map();
+      const formats = [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8];
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+
+      // On passe les 'hints' au lecteur
+      const reader = new BrowserMultiFormatReader(hints);
+      const video = document.getElementById(
+        "scanner-video",
+      ) as HTMLVideoElement;
+
+      const controls = await reader.decodeFromVideoDevice(
+        undefined,
+        video,
+        (result) => {
+          if (result) {
+            controls.stop();
+            setScanning(false);
+            void handleAdd(result.getText());
+          }
+        },
+      );
     } catch {
       setScanning(false);
       setError(t("cameraError"));
@@ -55,7 +69,12 @@ export function IsbnScanner() {
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-black">
-        <video id="scanner-video" className="aspect-[3/4] w-full object-cover" muted playsInline />
+        <video
+          id="scanner-video"
+          className="aspect-[3/4] w-full object-cover"
+          muted
+          playsInline
+        />
       </div>
 
       {!scanning ? (
@@ -75,7 +94,11 @@ export function IsbnScanner() {
           value={isbn}
           onChange={(e) => setIsbn(e.target.value)}
         />
-        <Button className="w-full" disabled={loading || !isbn} onClick={() => void handleAdd()}>
+        <Button
+          className="w-full"
+          disabled={loading || !isbn}
+          onClick={() => void handleAdd()}
+        >
           {loading ? "…" : t("add")}
         </Button>
       </div>

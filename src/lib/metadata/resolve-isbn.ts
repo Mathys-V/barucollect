@@ -13,7 +13,10 @@ export type BookMetadata = {
   raw?: unknown;
 };
 
-function detectBookType(title: string, subjects: string[] = []): "manga" | "light_novel" {
+function detectBookType(
+  title: string,
+  subjects: string[] = [],
+): "manga" | "light_novel" {
   const haystack = `${title} ${subjects.join(" ")}`.toLowerCase();
   if (haystack.includes("light novel") || haystack.includes("roman")) {
     return "light_novel";
@@ -51,9 +54,12 @@ async function fetchOpenLibrary(isbn: string): Promise<BookMetadata | null> {
   const authors: string[] = [];
 
   if (data.authors?.[0]?.key) {
-    const authorRes = await fetch(`https://openlibrary.org${data.authors[0].key}.json`, {
-      next: { revalidate: 86400 },
-    });
+    const authorRes = await fetch(
+      `https://openlibrary.org${data.authors[0].key}.json`,
+      {
+        next: { revalidate: 86400 },
+      },
+    );
     if (authorRes.ok) {
       const authorData = await authorRes.json();
       if (authorData.name) authors.push(authorData.name);
@@ -92,18 +98,23 @@ async function fetchGoogleBooks(isbn: string): Promise<BookMetadata | null> {
   const item = data.items?.[0]?.volumeInfo;
   if (!item) return null;
 
-  const title: string = item.title ?? "";
+  // 🛠️ LE CORRECTIF EST ICI : On fusionne proprement le titre et le sous-titre
+  const baseTitle: string = item.title ?? "";
+  const fullTitle = item.subtitle
+    ? `${baseTitle}: ${item.subtitle}`
+    : baseTitle;
+
   return {
     isbn,
-    title,
+    title: fullTitle, // On utilise le titre complet
     subtitle: item.subtitle,
     author: item.authors?.join(", "),
     publisher: item.publisher,
     language: item.language,
     coverUrl: item.imageLinks?.thumbnail?.replace("http:", "https:"),
-    volumeNumber: extractVolumeNumber(`${title} ${item.subtitle ?? ""}`),
-    seriesTitle: extractSeriesTitle(title),
-    bookType: detectBookType(title, item.categories ?? []),
+    volumeNumber: extractVolumeNumber(fullTitle), // On cherche le tome dans le titre complet
+    seriesTitle: extractSeriesTitle(fullTitle), // La série aura son vrai nom ("Re:Zero")
+    bookType: detectBookType(fullTitle, item.categories ?? []),
     source: "google_books",
     raw: item,
   };
@@ -126,7 +137,9 @@ async function fetchOpenBD(isbn: string): Promise<BookMetadata | null> {
     author: summary.author,
     publisher: summary.publisher,
     coverUrl: summary.cover?.startsWith("http") ? summary.cover : undefined,
-    volumeNumber: summary.volume ? parseInt(summary.volume, 10) : extractVolumeNumber(title),
+    volumeNumber: summary.volume
+      ? parseInt(summary.volume, 10)
+      : extractVolumeNumber(title),
     seriesTitle: summary.series ?? extractSeriesTitle(title),
     bookType: detectBookType(title),
     source: "openbd",
@@ -134,7 +147,9 @@ async function fetchOpenBD(isbn: string): Promise<BookMetadata | null> {
   };
 }
 
-export async function resolveIsbnMetadata(isbn: string): Promise<BookMetadata | null> {
+export async function resolveIsbnMetadata(
+  isbn: string,
+): Promise<BookMetadata | null> {
   const normalized = isbn.replace(/[-\s]/g, "");
 
   for (const fetcher of [fetchOpenLibrary, fetchGoogleBooks, fetchOpenBD]) {
