@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { BrowserMultiFormatReader, BarcodeFormat } from "@zxing/browser";
+import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addBookToCollection } from "@/app/actions/collection";
 import { normalizeIsbn } from "@/lib/utils";
-import { DecodeHintType } from "@zxing/library";
 
 export function IsbnScanner() {
   const t = useTranslations("scanner");
@@ -33,56 +32,68 @@ export function IsbnScanner() {
     window.location.href = "../dashboard";
   }
 
-  async function startCamera() {
-    setScanning(true);
-    setError(null);
+  useEffect(() => {
+    let html5QrCode: Html5Qrcode | null = null;
 
-    try {
-      // On crée des 'hints' pour forcer la lecture de EAN_13 et EAN_8
-      const hints = new Map();
-      const formats = [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8];
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
-
-      // On passe les 'hints' au lecteur
-      const reader = new BrowserMultiFormatReader(hints);
-      const video = document.getElementById(
-        "scanner-video",
-      ) as HTMLVideoElement;
-
-      const controls = await reader.decodeFromVideoDevice(
-        undefined,
-        video,
-        (result) => {
-          if (result) {
-            controls.stop();
-            setScanning(false);
-            void handleAdd(result.getText());
-          }
-        },
-      );
-    } catch {
-      setScanning(false);
-      setError(t("cameraError"));
+    if (scanning) {
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode
+        .start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 }, // LE FAMEUX CADRE DE VISÉE
+          },
+          (decodedText) => {
+            html5QrCode
+              ?.stop()
+              .then(() => {
+                setScanning(false);
+                void handleAdd(decodedText);
+              })
+              .catch(console.error);
+          },
+          (errorMessage) => {
+            // On ignore les erreurs de frame (normal quand ça cherche)
+          },
+        )
+        .catch((err) => {
+          setScanning(false);
+          setError(t("cameraError"));
+        });
     }
-  }
+
+    return () => {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+      }
+    };
+  }, [scanning]);
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-black">
-        <video
-          id="scanner-video"
-          className="aspect-[3/4] w-full object-cover"
-          muted
-          playsInline
-        />
-      </div>
+      {/* La zone vidéo ne s'affiche que quand on scanne */}
+      {scanning && (
+        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-black">
+          <div id="reader" className="w-full min-h-[300px]"></div>
+        </div>
+      )}
 
       {!scanning ? (
-        <Button className="w-full" onClick={() => void startCamera()}>
+        <Button
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+          onClick={() => setScanning(true)}
+        >
           {t("title")}
         </Button>
       ) : (
-        <p className="text-center text-sm text-zinc-500">{t("hint")}</p>
+        <Button
+          className="w-full"
+          variant="outline"
+          onClick={() => setScanning(false)}
+        >
+          Annuler le scan
+        </Button>
       )}
 
       <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4">
@@ -103,7 +114,9 @@ export function IsbnScanner() {
         </Button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>
+      )}
     </div>
   );
 }
