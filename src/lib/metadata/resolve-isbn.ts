@@ -183,17 +183,64 @@ async function fetchBNF(isbn: string): Promise<BookMetadata | null> {
   };
 }
 
+async function fetchScraperFallback(
+  isbn: string,
+): Promise<BookMetadata | null> {
+  try {
+    // On simule un vrai navigateur pour ne pas se faire bloquer
+    const res = await fetch(`https://www.chasse-aux-livres.fr/prix/${isbn}/`, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      next: { revalidate: 86400 },
+    });
+
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // On extrait le titre contenu dans la balise <title> de la page web
+    // Le site formate souvent comme ça : "<title>Titre du livre - Auteur - Occasion ou Neuf"
+    const titleMatch = html.match(/<title>(.*?) -/i);
+
+    if (!titleMatch) return null;
+
+    const rawTitle = titleMatch[1].trim();
+
+    // Si la page renvoie une erreur 404 déguisée
+    if (
+      rawTitle.toLowerCase().includes("introuvable") ||
+      rawTitle.includes("404")
+    ) {
+      return null;
+    }
+
+    return {
+      isbn,
+      title: rawTitle,
+      volumeNumber: extractVolumeNumber(rawTitle),
+      seriesTitle: extractSeriesTitle(rawTitle),
+      bookType: detectBookType(rawTitle),
+      source: "manual", // On le taggue en manual car ça vient d'un scrape non officiel
+      raw: { note: "Scraped from web fallback" },
+    };
+  } catch {
+    return null; // En cas de blocage, on échoue silencieusement
+  }
+}
+
 export async function resolveIsbnMetadata(
   isbn: string,
 ): Promise<BookMetadata | null> {
   const normalized = isbn.replace(/[-\s]/g, "");
 
-  // AJOUT DE fetchBNF À LA LISTE DES CHERCHEURS
+  // On ajoute fetchScraperFallback à la fin de la ligne de front
   for (const fetcher of [
     fetchOpenLibrary,
     fetchGoogleBooks,
     fetchBNF,
     fetchOpenBD,
+    fetchScraperFallback, // 🚀 Le joker
   ]) {
     try {
       const result = await fetcher(normalized);
