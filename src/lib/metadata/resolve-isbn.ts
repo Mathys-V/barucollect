@@ -147,12 +147,54 @@ async function fetchOpenBD(isbn: string): Promise<BookMetadata | null> {
   };
 }
 
+async function fetchBNF(isbn: string): Promise<BookMetadata | null> {
+  // L'API SRU de la BNF (catalogue français complet)
+  const res = await fetch(
+    `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.isbn%20adj%20%22${isbn}%22`,
+    {
+      next: { revalidate: 86400 },
+    },
+  );
+  if (!res.ok) return null;
+
+  const text = await res.text();
+  if (!text.includes("<srw:record>")) return null; // Aucun résultat
+
+  // Extraction propre des données XML via Regex
+  const titleMatch = text.match(/<dc:title>(.*?)<\/dc:title>/);
+  const authorMatch = text.match(/<dc:creator>(.*?)<\/dc:creator>/);
+  const publisherMatch = text.match(/<dc:publisher>(.*?)<\/dc:publisher>/);
+
+  if (!titleMatch) return null;
+
+  // Nettoyage des balises bizarres de la BNF (ex: "[Texte imprimé]")
+  const title = titleMatch[1].replace(/\[Texte imprimé\]/g, "").trim();
+
+  return {
+    isbn,
+    title,
+    author: authorMatch ? authorMatch[1].trim() : undefined,
+    publisher: publisherMatch ? publisherMatch[1].trim() : undefined,
+    volumeNumber: extractVolumeNumber(title),
+    seriesTitle: extractSeriesTitle(title),
+    bookType: detectBookType(title),
+    source: "manual", // Obligatoire car "bnf" n'est pas (encore) dans ton Enum Supabase
+    raw: { note: "Fetched from BNF" },
+  };
+}
+
 export async function resolveIsbnMetadata(
   isbn: string,
 ): Promise<BookMetadata | null> {
   const normalized = isbn.replace(/[-\s]/g, "");
 
-  for (const fetcher of [fetchOpenLibrary, fetchGoogleBooks, fetchOpenBD]) {
+  // AJOUT DE fetchBNF À LA LISTE DES CHERCHEURS
+  for (const fetcher of [
+    fetchOpenLibrary,
+    fetchGoogleBooks,
+    fetchBNF,
+    fetchOpenBD,
+  ]) {
     try {
       const result = await fetcher(normalized);
       if (result?.title) return result;

@@ -16,34 +16,49 @@ export function IsbnScanner() {
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
 
-  async function handleAdd(manualIsbn?: string) {
+  // Nouveaux états pour le mode manuel
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualAuthor, setManualAuthor] = useState("");
+
+  async function handleAdd(scannedIsbn?: string) {
     setLoading(true);
     setError(null);
-    const value = normalizeIsbn(manualIsbn ?? isbn);
-    const result = await addBookToCollection(value);
+    const value = normalizeIsbn(scannedIsbn ?? isbn);
+
+    // Si le formulaire est ouvert, on envoie les infos saisies
+    const manualData =
+      showManualForm && manualTitle
+        ? { title: manualTitle, author: manualAuthor }
+        : undefined;
+
+    const result = await addBookToCollection(value, "very_good", manualData);
     setLoading(false);
 
     if (!result.ok) {
-      setError(result.error === "not_found" ? t("notFound") : result.error);
+      if (result.error === "not_found") {
+        setError("Livre introuvable dans les bases. Veuillez saisir son nom :");
+        setShowManualForm(true);
+        if (scannedIsbn) setIsbn(scannedIsbn); // On garde l'ISBN en mémoire
+      } else {
+        setError(result.error);
+      }
       return;
     }
 
     setIsbn("");
+    setShowManualForm(false);
     window.location.href = "../dashboard";
   }
 
   useEffect(() => {
     let html5QrCode: Html5Qrcode | null = null;
-
     if (scanning) {
       html5QrCode = new Html5Qrcode("reader");
       html5QrCode
         .start(
           { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 150 }, // LE FAMEUX CADRE DE VISÉE
-          },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
           (decodedText) => {
             html5QrCode
               ?.stop()
@@ -53,16 +68,13 @@ export function IsbnScanner() {
               })
               .catch(console.error);
           },
-          (errorMessage) => {
-            // On ignore les erreurs de frame (normal quand ça cherche)
-          },
+          (errorMessage) => {},
         )
         .catch((err) => {
           setScanning(false);
           setError(t("cameraError"));
         });
     }
-
     return () => {
       if (html5QrCode && html5QrCode.isScanning) {
         html5QrCode.stop().catch(console.error);
@@ -72,14 +84,13 @@ export function IsbnScanner() {
 
   return (
     <div className="space-y-6">
-      {/* La zone vidéo ne s'affiche que quand on scanne */}
       {scanning && (
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-black">
           <div id="reader" className="w-full min-h-[300px]"></div>
         </div>
       )}
 
-      {!scanning ? (
+      {!scanning && !showManualForm ? (
         <Button
           className="w-full bg-orange-600 hover:bg-orange-700 text-white"
           onClick={() => setScanning(true)}
@@ -87,30 +98,56 @@ export function IsbnScanner() {
           {t("title")}
         </Button>
       ) : (
-        <Button
-          className="w-full"
-          variant="outline"
-          onClick={() => setScanning(false)}
-        >
-          Annuler le scan
-        </Button>
+        scanning && (
+          <Button
+            className="w-full"
+            variant="outline"
+            onClick={() => setScanning(false)}
+          >
+            Annuler le scan
+          </Button>
+        )
       )}
 
       <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4">
-        <Label htmlFor="isbn">{t("manual")}</Label>
+        <Label htmlFor="isbn">{t("manual")} / ISBN</Label>
         <Input
           id="isbn"
           inputMode="numeric"
           placeholder={t("isbnPlaceholder")}
           value={isbn}
           onChange={(e) => setIsbn(e.target.value)}
+          disabled={showManualForm} // On gèle l'ISBN si on est en mode création
         />
+
+        {/* LE NOUVEAU FORMULAIRE D'URGENCE */}
+        {showManualForm && (
+          <div className="space-y-3 pt-3 border-t border-zinc-100">
+            <div>
+              <Label>Titre de l'œuvre</Label>
+              <Input
+                placeholder="Ex: Berserk Tome 1"
+                value={manualTitle}
+                onChange={(e) => setManualTitle(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Auteur (Optionnel)</Label>
+              <Input
+                placeholder="Ex: Kentaro Miura"
+                value={manualAuthor}
+                onChange={(e) => setManualAuthor(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
         <Button
           className="w-full"
           disabled={loading || !isbn}
           onClick={() => void handleAdd()}
         >
-          {loading ? "…" : t("add")}
+          {loading ? "…" : showManualForm ? "Créer et Ajouter" : t("add")}
         </Button>
       </div>
 

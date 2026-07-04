@@ -7,7 +7,11 @@ import { estimatePrice } from "@/lib/pricing/estimate-price";
 import { normalizeIsbn } from "@/lib/utils";
 import type { BookCondition } from "@/types/database";
 
-export async function addBookToCollection(isbn: string, condition: BookCondition = "very_good") {
+export async function addBookToCollection(
+  isbn: string,
+  condition: BookCondition = "very_good",
+  manualData?: { title: string; author: string }, // <-- Le plan de secours
+) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,7 +27,20 @@ export async function addBookToCollection(isbn: string, condition: BookCondition
     .maybeSingle();
 
   if (!book) {
-    const metadata = await resolveIsbnMetadata(normalized);
+    let metadata = await resolveIsbnMetadata(normalized);
+
+    // Si TOUTES les APIs ont échoué, on utilise la saisie de l'utilisateur
+    if (!metadata && manualData) {
+      metadata = {
+        isbn: normalized,
+        title: manualData.title,
+        author: manualData.author,
+        seriesTitle: manualData.title, // Par défaut, la série = le titre
+        bookType: "manga",
+        source: "manual",
+      };
+    }
+
     if (!metadata) return { ok: false as const, error: "not_found" };
 
     let seriesId: string | null = null;
@@ -71,17 +88,17 @@ export async function addBookToCollection(isbn: string, condition: BookCondition
     if (bookError) return { ok: false as const, error: bookError.message };
   }
 
-  const { error: collectionError } = await supabase.from("user_collection").upsert(
-    {
-      user_id: user.id,
-      isbn: normalized,
-      condition,
-    },
-    { onConflict: "user_id,isbn" }
-  );
+  const { error: collectionError } = await supabase
+    .from("user_collection")
+    .upsert(
+      { user_id: user.id, isbn: normalized, condition },
+      { onConflict: "user_id,isbn" },
+    );
 
-  if (collectionError) return { ok: false as const, error: collectionError.message };
+  if (collectionError)
+    return { ok: false as const, error: collectionError.message };
 
+  // RÉPARATION DU PRIX (0€)
   const price = await estimatePrice(normalized, condition);
   await supabase.from("price_cache").upsert(
     {
@@ -91,8 +108,14 @@ export async function addBookToCollection(isbn: string, condition: BookCondition
       source: price.source,
       sample_size: price.sampleSize ?? null,
     },
-    { onConflict: "isbn,condition,source" }
+    { onConflict: "isbn,condition,source" },
   );
+
+  // On force la mise à jour sur le catalogue pour que le Dashboard l'affiche direct
+  await supabase
+    .from("books_catalog")
+    .update({ last_estimated_eur: price.estimatedEur })
+    .eq("isbn", normalized);
 
   revalidatePath("/dashboard");
   revalidatePath("/scanner");
