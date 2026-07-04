@@ -148,9 +148,9 @@ async function fetchOpenBD(isbn: string): Promise<BookMetadata | null> {
 }
 
 async function fetchBNF(isbn: string): Promise<BookMetadata | null> {
-  // L'API SRU de la BNF (catalogue français complet)
+  // L'API SRU de la BNF - On utilise "bib.anywhere" pour chercher l'EAN ou l'ISBN sans distinction
   const res = await fetch(
-    `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.isbn%20adj%20%22${isbn}%22`,
+    `https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query=bib.anywhere%20adj%20%22${isbn}%22`,
     {
       next: { revalidate: 86400 },
     },
@@ -178,7 +178,7 @@ async function fetchBNF(isbn: string): Promise<BookMetadata | null> {
     volumeNumber: extractVolumeNumber(title),
     seriesTitle: extractSeriesTitle(title),
     bookType: detectBookType(title),
-    source: "manual", // Obligatoire car "bnf" n'est pas (encore) dans ton Enum Supabase
+    source: "manual",
     raw: { note: "Fetched from BNF" },
   };
 }
