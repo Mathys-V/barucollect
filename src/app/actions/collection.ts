@@ -158,3 +158,28 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
 }
+
+export async function removeBookFromCollection(isbn: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
+  const normalized = normalizeIsbn(isbn);
+
+  // On supprime la ligne correspondante dans la collection de l'utilisateur
+  const { error } = await supabase
+    .from("user_collection")
+    .delete()
+    .match({ user_id: user.id, isbn: normalized });
+
+  if (error) return { ok: false as const, error: error.message };
+
+  // On rafraîchit les pages pour mettre à jour l'affichage
+  revalidatePath("/dashboard");
+  revalidatePath("/scanner");
+
+  return { ok: true as const };
+}

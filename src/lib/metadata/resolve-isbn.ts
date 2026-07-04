@@ -88,7 +88,10 @@ async function fetchOpenLibrary(isbn: string): Promise<BookMetadata | null> {
 async function fetchGoogleBooks(isbn: string): Promise<BookMetadata | null> {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
   const url = new URL("https://www.googleapis.com/books/v1/volumes");
-  url.searchParams.set("q", `isbn:${isbn}`);
+
+  // CORRECTION : On retire le "isbn:" pour faire une recherche globale sur les 13 chiffres
+  url.searchParams.set("q", isbn);
+
   if (apiKey) url.searchParams.set("key", apiKey);
 
   const res = await fetch(url.toString(), { next: { revalidate: 86400 } });
@@ -98,7 +101,6 @@ async function fetchGoogleBooks(isbn: string): Promise<BookMetadata | null> {
   const item = data.items?.[0]?.volumeInfo;
   if (!item) return null;
 
-  // 🛠️ LE CORRECTIF EST ICI : On fusionne proprement le titre et le sous-titre
   const baseTitle: string = item.title ?? "";
   const fullTitle = item.subtitle
     ? `${baseTitle}: ${item.subtitle}`
@@ -106,14 +108,14 @@ async function fetchGoogleBooks(isbn: string): Promise<BookMetadata | null> {
 
   return {
     isbn,
-    title: fullTitle, // On utilise le titre complet
+    title: fullTitle,
     subtitle: item.subtitle,
     author: item.authors?.join(", "),
     publisher: item.publisher,
     language: item.language,
     coverUrl: item.imageLinks?.thumbnail?.replace("http:", "https:"),
-    volumeNumber: extractVolumeNumber(fullTitle), // On cherche le tome dans le titre complet
-    seriesTitle: extractSeriesTitle(fullTitle), // La série aura son vrai nom ("Re:Zero")
+    volumeNumber: extractVolumeNumber(fullTitle),
+    seriesTitle: extractSeriesTitle(fullTitle),
     bookType: detectBookType(fullTitle, item.categories ?? []),
     source: "google_books",
     raw: item,
@@ -183,64 +185,17 @@ async function fetchBNF(isbn: string): Promise<BookMetadata | null> {
   };
 }
 
-async function fetchScraperFallback(
-  isbn: string,
-): Promise<BookMetadata | null> {
-  try {
-    // On simule un vrai navigateur pour ne pas se faire bloquer
-    const res = await fetch(`https://www.chasse-aux-livres.fr/prix/${isbn}/`, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-      next: { revalidate: 86400 },
-    });
-
-    if (!res.ok) return null;
-    const html = await res.text();
-
-    // On extrait le titre contenu dans la balise <title> de la page web
-    // Le site formate souvent comme ça : "<title>Titre du livre - Auteur - Occasion ou Neuf"
-    const titleMatch = html.match(/<title>(.*?) -/i);
-
-    if (!titleMatch) return null;
-
-    const rawTitle = titleMatch[1].trim();
-
-    // Si la page renvoie une erreur 404 déguisée
-    if (
-      rawTitle.toLowerCase().includes("introuvable") ||
-      rawTitle.includes("404")
-    ) {
-      return null;
-    }
-
-    return {
-      isbn,
-      title: rawTitle,
-      volumeNumber: extractVolumeNumber(rawTitle),
-      seriesTitle: extractSeriesTitle(rawTitle),
-      bookType: detectBookType(rawTitle),
-      source: "manual", // On le taggue en manual car ça vient d'un scrape non officiel
-      raw: { note: "Scraped from web fallback" },
-    };
-  } catch {
-    return null; // En cas de blocage, on échoue silencieusement
-  }
-}
-
 export async function resolveIsbnMetadata(
   isbn: string,
 ): Promise<BookMetadata | null> {
   const normalized = isbn.replace(/[-\s]/g, "");
 
-  // On ajoute fetchScraperFallback à la fin de la ligne de front
+  // On a retiré le scraper de secours
   for (const fetcher of [
     fetchOpenLibrary,
     fetchGoogleBooks,
     fetchBNF,
     fetchOpenBD,
-    fetchScraperFallback, // 🚀 Le joker
   ]) {
     try {
       const result = await fetcher(normalized);
