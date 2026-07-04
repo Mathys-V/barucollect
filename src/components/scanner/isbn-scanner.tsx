@@ -68,9 +68,9 @@ export function IsbnScanner() {
               })
               .catch(console.error);
           },
-          (errorMessage) => {},
+          () => {},
         )
-        .catch((err) => {
+        .catch(() => {
           setScanning(false);
           setError(t("cameraError"));
         });
@@ -80,6 +80,7 @@ export function IsbnScanner() {
         html5QrCode.stop().catch(console.error);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanning]);
 
   return (
@@ -124,7 +125,7 @@ export function IsbnScanner() {
         {showManualForm && (
           <div className="space-y-3 pt-3 border-t border-zinc-100">
             <div>
-              <Label>Titre de l'œuvre</Label>
+              <Label>Titre de l&apos;œuvre</Label>
               <Input
                 placeholder="Ex: Berserk Tome 1"
                 value={manualTitle}
